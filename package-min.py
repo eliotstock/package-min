@@ -11,11 +11,34 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 def main() -> int:
     """Script entry point."""
 
-    # args = parse_args()
+    header_done = False
 
+    # Get just the names of all the packages installed on the host.
     package_list = subprocess.check_output(['dpkg-query', '-f', "${Package}\n", '-W']).splitlines()
 
-    _LOG.info('Found %d pacakges', len(package_list))
+    _LOG.info(f'Analysing {len(package_list)} packages...')
+
+    # For each package (usually about 2K)...
+    for p in package_list:
+        package = p.decode('utf-8')
+
+        # Get a list of all reverse dependencies, that is, packages that depend on this package.
+        rdepends_output = subprocess.check_output(['apt-cache', 'rdepends', package]).splitlines()
+
+        # The first two lines of the output are headers. Every other line is a dependency.
+        rdepends = max(len(rdepends_output) - 2, 0)
+
+        if rdepends == 0:
+            show_output = subprocess.check_output(['apt-cache', 'show', package]).splitlines()
+
+            for line in show_output:
+                line_str = line.decode('utf-8')
+                if line_str.startswith('Description: '):
+                    if not header_done:
+                        _LOG.info('The following packages are unused by any other package:')
+                        header_done = True
+
+                    _LOG.info(f"  {package}: {line_str.replace('Description: ', '')}")
 
 if __name__ == '__main__':
     sys.exit(main())
