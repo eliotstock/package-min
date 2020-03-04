@@ -29,16 +29,22 @@ def main() -> int:
         rdepends = max(len(rdepends_output) - 2, 0)
 
         if rdepends == 0:
+            # Get some details for the package, then pull out the description from them.
             show_output = subprocess.check_output(['apt-cache', 'show', package]).splitlines()
 
             for line in show_output:
                 line_str = line.decode('utf-8')
+
                 if line_str.startswith('Description: '):
+                    # Print the header only once we're sure we have at least one package to report.
                     if not header_done:
                         _LOG.info('The following packages are unused by any other package:')
                         header_done = True
 
                     _LOG.info(f"  {package}: {line_str.replace('Description: ', '')}")
+
+    if not header_done:
+        _LOG.info('All packages have at least one dependency')
 
 if __name__ == '__main__':
     sys.exit(main())
